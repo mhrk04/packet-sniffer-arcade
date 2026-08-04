@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Packet Sniffer Arcade</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@18.3.1",
+        "react/jsx-runtime": "https://esm.sh/react@18.3.1/jsx-runtime",
+        "react-dom": "https://esm.sh/react-dom@18.3.1",
+        "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
+        "lucide-react": "https://esm.sh/lucide-react@0.400.0?external=react,react-dom",
+        "framer-motion": "https://esm.sh/framer-motion@11?external=react,react-dom"
+      }
+    }
+    </script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background-color: #050505;
+            color: #00f3ff;
+            overflow: hidden;
+        }
+        .neon-glow {
+            text-shadow: 0 0 10px rgba(0, 243, 255, 0.7), 0 0 20px rgba(0, 243, 255, 0.5);
+        }
+        .neon-border {
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.3);
+            border: 1px solid rgba(0, 243, 255, 0.5);
+        }
+        .flash-x {
+            animation: flashX 0.3s ease-in-out;
+        }
+        @keyframes flashX {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+        }
+        .particle {
+            position: absolute;
+            pointer-events: none;
+            animation: rise 0.8s ease-out forwards;
+        }
+        @keyframes rise {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-50px); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel" data-type="module" data-presets="react">
+        import React, { useState, useEffect, useRef, useMemo } from 'react';
+        import { createRoot } from 'react-dom/client';
+        import { Shield, Zap, Activity, AlertTriangle, Play, RefreshCw, X } from 'lucide-react';
+        import { motion, AnimatePresence } from 'framer-motion';
+
+        const App = () => {
+            const [gameState, setGameState] = useState({
+                score: 0,
+                timeLeft: 20,
+                isPlaying: false,
+                currentTraffic: null
+            });
+            const [ws, setWs] = useState(null);
+            const [feedback, setFeedback] = useState(null); // 'correct' or 'incorrect'
+            const [particles, setParticles] = useState([]);
+            const [showGameOver, setShowGameOver] = useState(false);
+
+            useEffect(() => {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const socket = new WebSocket(`${protocol}//${window.location.host}${window.location.pathname}ws`);
+                
+                socket.onmessage = (event) => {
+                    const msg = JSON.parse(event.data);
+                    if (msg.type === 'STATE') {
+                        setGameState(msg.data);
+                        if (!msg.data.isPlaying && msg.data.timeLeft === 0) {
+                            setShowGameOver(true);
+                        }
+                    } else if (msg.type === 'FEEDBACK') {
+                        if (msg.correct) {
+                            setFeedback('correct');
+                            setParticles(prev => [...prev, { id: Date.now(), x: Math.random() * 80 + 10, y: 50 }]);
+                        } else {
+                            setFeedback('incorrect');
+                        }
+                        setTimeout(() => setFeedback(null), 300);
+                    }
+                };
+
+                setWs(socket);
+                return () => socket.close();
+            }, []);
+
+            const startGame = () => {
+                if (ws) {
+                    ws.send(JSON.stringify({ type: 'START' }));
+                    setShowGameOver(false);
+                }
+            };
+
+            const guess = (type) => {
+                if (ws && gameState.isPlaying) {
+                    ws.send(JSON.stringify({ type: 'GUESS', guess: type }));
+                }
+            };
+
+            return (
+                <div className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden">
+                    {/* Background Grid Decoration */}
+                    <div className="absolute inset-0 opacity-10 pointer-events-none" 
+                         style={{ backgroundImage: 'linear-gradient(rgba(0, 243, 255, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 243, 255, 0.1) 1px, transparent 1px)', backgroundSize: '40px 40px' }}>
+                    </div>
+
+                    {/* Header */}
+                    <div className="w-full max-w-4xl flex justify-between items-end mb-8 z-10">
+                        <div className="flex flex-col">
+                            <h1 className="text-4xl font-bold neon-glow tracking-tighter flex items-center gap-2">
+                                <Shield className="w-8 h-8" />
+                                TRAFFIC_ANALYZER v1.0
+                            </h1>
+                            <div className="text-xs opacity-50">PACKET_SNIFFER_SUBSYSTEM_ACTIVE</div>
+                        </div>
+                        <div className="flex gap-12">
+                            <div className="text-right">
+                                <div className="text-xs opacity-50 uppercase">Global Score</div>
+                                <div className="text-4xl font-bold neon-glow">{gameState.score.toString().padStart(6, '0')}</div>
+                            </div>
+                            <div className="text-right">
+                                <div className="text-xs opacity-50 uppercase">Time Remaining</div>
+                                <div className="text-4xl font-bold text-red-500" style={{ textShadow: '0 0 10px rgba(239, 68, 68, 0.5)' }}>
+                                    {gameState.timeLeft}s
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Analysis Window */}
+                    <div className="w-full max-w-4xl h-80 neon-border bg-black/80 relative flex flex-col z-10">
+                        <div className="bg-cyan-900/30 border-b border-cyan-500/30 p-2 flex justify-between items-center">
+                            <span className="text-xs font-bold flex items-center gap-2">
+                                <Activity className="w-3 h-3" /> LIVE_TRAFFIC_FEED
+                            </span>
+                            <span className="text-[10px] opacity-50">0x442_001_8F</span>
+                        </div>
+                        
+                        <div className="flex-1 p-6 flex flex-col justify-center items-center relative">
+                            {gameState.currentTraffic ? (
+                                <motion.div 
+                                    key={gameState.currentTraffic.src + gameState.currentTraffic.dest}
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    className="grid grid-cols-2 gap-x-12 gap-y-4 w-full"
+                                >
+                                    <div className="space-y-1">
+                                        <div className="text-[10px] opacity-50 uppercase">Source IP</div>
+                                        <div className="text-xl font-bold text-white">{gameState.currentTraffic.src}</div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <div className="text-[10px] opacity-50 uppercase">Destination</div>
+                                        <div className="text-xl font-bold text-white">{gameState.currentTraffic.dest}</div>
+                                    </div>
+                                    <div className="space-y-1 col-span-2 border-t border-cyan-500/10 pt-4">
+                                        <div className="text-[10px] opacity-50 uppercase">Behavior Pattern</div>
+                                        <div className="text-xl font-bold text-cyan-400 italic font-mono">
+                                            "{gameState.currentTraffic.behavior}"
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <div className="text-[10px] opacity-50 uppercase">Flags</div>
+                                        <div className="text-xl font-bold text-yellow-400">[{gameState.currentTraffic.flag}]</div>
+                                    </div>
+                                </motion.div>
+                            ) : (
+                                <div className="text-cyan-900 animate-pulse text-2xl font-bold">
+                                    {gameState.isPlaying ? "INITIALIZING_CAPTURE..." : "STANDBY"}
+                                </div>
+                            )}
+
+                            {/* Correct/Incorrect Flash */}
+                            <AnimatePresence>
+                                {feedback === 'incorrect' && (
+                                    <motion.div 
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}
+                                        className="absolute inset-0 bg-red-500/20 flex items-center justify-center z-20 pointer-events-none"
+                                    >
+                                        <X className="w-48 h-48 text-red-500" strokeWidth={3} />
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                            
+                            {/* Particles */}
+                            {particles.map(p => (
+                                <div key={p.id} className="particle text-2xl font-bold text-cyan-400" 
+                                     style={{ left: `${p.x}%`, top: `${p.y}%` }}>
+                                    +100
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="w-full max-w-4xl grid grid-cols-3 gap-6 mt-8 z-10">
+                        {[
+                            { label: "Normal", type: "Normal", color: "cyan", icon: Shield },
+                            { label: "Port Scan", type: "Port Scan", color: "yellow", icon: RefreshCw },
+                            { label: "DDoS", type: "DDoS", color: "red", icon: AlertTriangle }
+                        ].map((btn, idx) => (
+                            <button
+                                key={btn.type}
+                                onClick={() => guess(btn.type)}
+                                disabled={!gameState.isPlaying}
+                                className={`
+                                    group relative overflow-hidden p-6 rounded-none border-2 transition-all
+                                    ${!gameState.isPlaying ? 'opacity-20 border-gray-800' : 
+                                      btn.color === 'cyan' ? 'border-cyan-500 hover:bg-cyan-500/20' :
+                                      btn.color === 'yellow' ? 'border-yellow-500 hover:bg-yellow-500/20' :
+                                      'border-red-500 hover:bg-red-500/20'}
+                                `}
+                            >
+                                <div className="flex flex-col items-center gap-2">
+                                    <btn.icon className={`w-8 h-8 ${
+                                        btn.color === 'cyan' ? 'text-cyan-400' :
+                                        btn.color === 'yellow' ? 'text-yellow-400' :
+                                        'text-red-400'
+                                    }`} />
+                                    <span className="text-xl font-bold uppercase tracking-widest">[{idx + 1}] {btn.label}</span>
+                                </div>
+                                <div className="absolute top-0 right-0 p-1 text-[8px] opacity-30">CMD_{btn.type.replace(' ', '_').toUpperCase()}</div>
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Controls */}
+                    <div className="mt-12 z-10">
+                        {!gameState.isPlaying && !showGameOver && (
+                            <button 
+                                onClick={startGame}
+                                className="group flex items-center gap-4 bg-cyan-500 text-black px-12 py-4 font-bold text-2xl hover:bg-white transition-colors"
+                            >
+                                <Play className="fill-current" /> START_SIMULATION
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Game Over Modal */}
+                    <AnimatePresence>
+                        {showGameOver && (
+                            <motion.div 
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm"
+                            >
+                                <div className="text-center space-y-8 p-12 neon-border bg-black max-w-lg w-full">
+                                    <h2 className="text-6xl font-black text-red-500 italic">SYSTEM_CRASHED</h2>
+                                    <div className="space-y-2">
+                                        <div className="text-xs opacity-50 uppercase">Analysis Results</div>
+                                        <div className="text-5xl font-bold text-white">SCORE: {gameState.score}</div>
+                                    </div>
+                                    <button 
+                                        onClick={startGame}
+                                        className="w-full flex items-center justify-center gap-4 bg-cyan-500 text-black py-4 font-bold text-xl hover:bg-white transition-colors"
+                                    >
+                                        <RefreshCw /> REBOOT_SYSTEM
+                                    </button>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    {/* Footer / Info */}
+                    <div className="absolute bottom-4 left-4 text-[10px] opacity-30">
+                        &gt; NODE_STATUS: OK<br />
+                        &gt; ENCRYPTION: AES-256-GCM<br />
+                        &gt; UPLINK: STABLE
+                    </div>
+                </div>
+            );
+        };
+
+        createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>

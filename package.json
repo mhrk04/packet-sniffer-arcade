@@ -1,0 +1,7 @@
+{
+  "name": "packet-sniffer-arcade",
+  "type": "module",
+  "dependencies": {
+    "hono": "^4.6.0"
+  }
+}
