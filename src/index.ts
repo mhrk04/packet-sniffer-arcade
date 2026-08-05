@@ -9,7 +9,7 @@ interface Env {
 export class GameState extends DurableObject {
   state: DurableObjectState;
   score: number = 0;
-  timeLeft: number = 20;
+  timeLeft: number = 40;
   isPlaying: boolean = false;
   isPaused: boolean = false;
   currentTraffic: any = null;
@@ -80,7 +80,7 @@ export class GameState extends DurableObject {
 
   startGame() {
     this.score = 0;
-    this.timeLeft = 20;
+    this.timeLeft = 40;
     this.isPlaying = true;
     this.isPaused = false;
     this.packetIndex = 0;
@@ -91,7 +91,7 @@ export class GameState extends DurableObject {
 
   resetGame() {
     this.score = 0;
-    this.timeLeft = 20;
+    this.timeLeft = 40;
     this.isPlaying = false;
     this.isPaused = false;
     this.currentTraffic = null;

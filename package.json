@@ -1,6 +1,9 @@
 {
   "name": "packet-sniffer-arcade",
   "type": "module",
+  "scripts": {
+    "dev": "npx wrangler dev"
+  },
   "dependencies": {
     "hono": "^4.6.0"
   }
