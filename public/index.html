@@ -1,8 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#050505">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Packet Sniffer Arcade</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="importmap">
@@ -19,50 +22,406 @@
     </script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;900&display=swap');
+        
+        * {
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+
         body {
             font-family: 'JetBrains Mono', monospace;
             background-color: #050505;
             color: #00f3ff;
-            overflow: hidden;
+            min-height: 100vh;
+            min-height: 100dvh;
+            overflow-x: hidden;
+            overflow-y: auto;
+            user-select: none;
+            -webkit-user-select: none;
         }
+
+        /* Custom mobile scrollbar */
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.5);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 243, 255, 0.4);
+            border-radius: 2px;
+        }
+
         .neon-glow {
             text-shadow: 0 0 10px rgba(0, 243, 255, 0.7), 0 0 20px rgba(0, 243, 255, 0.5);
         }
+
         .neon-border {
-            box-shadow: 0 0 15px rgba(0, 243, 255, 0.3);
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.25);
             border: 1px solid rgba(0, 243, 255, 0.5);
         }
-        .flash-x {
-            animation: flashX 0.3s ease-in-out;
-        }
-        @keyframes flashX {
-            0%, 100% { opacity: 0; }
-            50% { opacity: 1; }
-        }
+
         .particle {
             position: absolute;
             pointer-events: none;
             animation: rise 0.8s ease-out forwards;
         }
+
         @keyframes rise {
-            0% { transform: translateY(0); opacity: 1; }
-            100% { transform: translateY(-50px); opacity: 0; }
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-40px) scale(1.2); opacity: 0; }
         }
+
+        /* Touch gesture indicator animation */
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 0.9; }
+        }
+        .gesture-hint {
+            animation: pulseGlow 2s infinite ease-in-out;
+        }
+
+        /* Equalizer bar animation for music button */
+        @keyframes eqBar {
+            0%, 100% { height: 4px; }
+            50% { height: 14px; }
+        }
+        .eq-bar-1 { animation: eqBar 0.5s infinite ease-in-out; }
+        .eq-bar-2 { animation: eqBar 0.7s infinite ease-in-out 0.1s; }
+        .eq-bar-3 { animation: eqBar 0.4s infinite ease-in-out 0.2s; }
     </style>
 </head>
-<body>
+<body class="bg-[#050505] text-[#00f3ff] antialiased">
     <div id="root"></div>
+
     <script type="text/babel" data-type="module" data-presets="react">
-        import React, { useState, useEffect, useRef, useMemo } from 'react';
+        import React, { useState, useEffect, useRef } from 'react';
         import { createRoot } from 'react-dom/client';
-        import { Shield, Zap, Activity, AlertTriangle, Play, RefreshCw, X } from 'lucide-react';
+        import { Shield, Zap, Activity, AlertTriangle, Play, RefreshCw, X, Volume2, VolumeX, Music, Radio, ArrowLeft, ArrowUp, ArrowRight } from 'lucide-react';
         import { motion, AnimatePresence } from 'framer-motion';
+
+        // High-Energy Web Audio Procedural Cyberpunk Sound & Music Engine
+        class CyberSoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.sfxMuted = false;
+                this.bgmMuted = false;
+                this.bgmStarted = false;
+                this.step = 0;
+                this.timerId = null;
+                this.intensity = 'STANDBY'; // 'STANDBY' | 'PLAYING' | 'PAUSED' | 'GAMEOVER'
+                this.noiseBuffer = null;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContext) {
+                        this.ctx = new AudioContext();
+                        this.createNoiseBuffer();
+                    }
+                }
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            createNoiseBuffer() {
+                if (!this.ctx) return;
+                const bufferSize = this.ctx.sampleRate * 2;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const output = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    output[i] = Math.random() * 2 - 1;
+                }
+                this.noiseBuffer = buffer;
+            }
+
+            startBGM() {
+                this.init();
+                if (this.bgmStarted) return;
+                this.bgmStarted = true;
+                
+                // 138 BPM step sequencer (16th note = 108.7ms)
+                const stepInterval = (60 / 138 / 4) * 1000;
+                this.timerId = setInterval(() => {
+                    this.onBeatStep();
+                    this.step = (this.step + 1) % 16;
+                }, stepInterval);
+            }
+
+            setIntensity(mode) {
+                this.intensity = mode;
+            }
+
+            toggleBGM() {
+                this.bgmMuted = !this.bgmMuted;
+                if (!this.bgmStarted && !this.bgmMuted) {
+                    this.startBGM();
+                }
+                return this.bgmMuted;
+            }
+
+            toggleSFX() {
+                this.sfxMuted = !this.sfxMuted;
+                return this.sfxMuted;
+            }
+
+            // Step Sequencer Callback
+            onBeatStep() {
+                if (this.bgmMuted || !this.ctx) return;
+                
+                const now = this.ctx.currentTime;
+                const step = this.step;
+                const mode = this.intensity;
+
+                // --- 1. KICK DRUM ---
+                if (mode === 'PLAYING' && (step === 0 || step === 4 || step === 8 || step === 12)) {
+                    this.playKick(now, 0.4);
+                } else if (mode === 'STANDBY' && step === 0) {
+                    this.playKick(now, 0.15);
+                }
+
+                // --- 2. SNARE DRUM ---
+                if (mode === 'PLAYING' && (step === 4 || step === 12)) {
+                    this.playSnare(now, 0.25);
+                }
+
+                // --- 3. HI-HAT ---
+                if (mode === 'PLAYING' && (step % 2 === 0)) {
+                    this.playHiHat(now, step % 4 === 2 ? 0.12 : 0.06);
+                }
+
+                // --- 4. CYBER BASSLINE ---
+                if (mode !== 'GAMEOVER') {
+                    // Intense 16-step Synthwave Bass Sequence
+                    const bassNotes = [
+                        55.00, 55.00, 65.41, 55.00,  // A1, A1, C2, A1
+                        82.41, 73.42, 65.41, 49.00,  // E2, D2, C2, G1
+                        55.00, 55.00, 98.00, 82.41,  // A1, A1, G2, E2
+                        87.31, 82.41, 73.42, 65.41   // F2, E2, D2, C2
+                    ];
+                    const freq = bassNotes[step];
+                    const bassVol = mode === 'PLAYING' ? 0.25 : mode === 'PAUSED' ? 0.08 : 0.12;
+                    const cutoff = mode === 'PLAYING' ? 1400 : 500;
+                    this.playSynthBass(now, freq, bassVol, cutoff);
+                }
+
+                // --- 5. HIGH ARPEGGIO SYNTH LEAD ---
+                if (mode === 'PLAYING') {
+                    const arpNotes = [
+                        220.00, 329.63, 440.00, 523.25, // A3, E4, A4, C5
+                        659.25, 523.25, 440.00, 329.63, // E5, C5, A4, E4
+                        220.00, 392.00, 440.00, 587.33, // A3, G4, A4, D5
+                        659.25, 587.33, 440.00, 392.00  // E5, D5, A4, G4
+                    ];
+                    const freq = arpNotes[step];
+                    this.playArpLead(now, freq, 0.08);
+                }
+            }
+
+            // Synth Instrument Voice Functions
+            playKick(t, volume) {
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(150, t);
+                    osc.frequency.exponentialRampToValueAtTime(32, t + 0.08);
+                    gain.gain.setValueAtTime(volume, t);
+                    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(t);
+                    osc.stop(t + 0.12);
+                } catch(e) {}
+            }
+
+            playSnare(t, volume) {
+                if (!this.noiseBuffer) return;
+                try {
+                    // Noise component
+                    const noise = this.ctx.createBufferSource();
+                    noise.buffer = this.noiseBuffer;
+                    const filter = this.ctx.createBiquadFilter();
+                    filter.type = 'highpass';
+                    filter.frequency.value = 1000;
+                    const gain = this.ctx.createGain();
+                    gain.gain.setValueAtTime(volume, t);
+                    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
+                    noise.connect(filter);
+                    filter.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    noise.start(t);
+                    noise.stop(t + 0.15);
+
+                    // Body tone
+                    const osc = this.ctx.createOscillator();
+                    const toneGain = this.ctx.createGain();
+                    osc.frequency.setValueAtTime(180, t);
+                    osc.frequency.exponentialRampToValueAtTime(80, t + 0.1);
+                    toneGain.gain.setValueAtTime(volume * 0.5, t);
+                    toneGain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+                    osc.connect(toneGain);
+                    toneGain.connect(this.ctx.destination);
+                    osc.start(t);
+                    osc.stop(t + 0.1);
+                } catch(e) {}
+            }
+
+            playHiHat(t, volume) {
+                if (!this.noiseBuffer) return;
+                try {
+                    const noise = this.ctx.createBufferSource();
+                    noise.buffer = this.noiseBuffer;
+                    const filter = this.ctx.createBiquadFilter();
+                    filter.type = 'highpass';
+                    filter.frequency.value = 7000;
+                    const gain = this.ctx.createGain();
+                    gain.gain.setValueAtTime(volume, t);
+                    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+                    noise.connect(filter);
+                    filter.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    noise.start(t);
+                    noise.stop(t + 0.04);
+                } catch(e) {}
+            }
+
+            playSynthBass(t, freq, volume, cutoffFreq) {
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const filter = this.ctx.createBiquadFilter();
+                    const gain = this.ctx.createGain();
+                    
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(freq, t);
+
+                    filter.type = 'lowpass';
+                    filter.frequency.setValueAtTime(cutoffFreq, t);
+                    filter.frequency.exponentialRampToValueAtTime(300, t + 0.09);
+
+                    gain.gain.setValueAtTime(volume, t);
+                    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+
+                    osc.connect(filter);
+                    filter.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start(t);
+                    osc.stop(t + 0.1);
+                } catch(e) {}
+            }
+
+            playArpLead(t, freq, volume) {
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(freq, t);
+
+                    gain.gain.setValueAtTime(volume, t);
+                    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start(t);
+                    osc.stop(t + 0.08);
+                } catch(e) {}
+            }
+
+            // Sound Effects (SFX)
+            playCorrect() {
+                if (this.sfxMuted) return;
+                this.init();
+                if (!this.ctx) return;
+                try {
+                    const now = this.ctx.currentTime;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(523.25, now); // C5
+                    osc.frequency.exponentialRampToValueAtTime(1046.50, now + 0.15); // C6
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+                } catch(e) {}
+            }
+
+            playIncorrect() {
+                if (this.sfxMuted) return;
+                this.init();
+                if (!this.ctx) return;
+                try {
+                    const now = this.ctx.currentTime;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(180, now);
+                    osc.frequency.linearRampToValueAtTime(90, now + 0.25);
+                    gain.gain.setValueAtTime(0.25, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                } catch(e) {}
+            }
+
+            playStart() {
+                if (this.sfxMuted) return;
+                this.init();
+                if (!this.ctx) return;
+                try {
+                    const now = this.ctx.currentTime;
+                    [261.63, 329.63, 392.00, 523.25].forEach((freq, idx) => {
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+                        osc.frequency.value = freq;
+                        gain.gain.setValueAtTime(0.12, now + idx * 0.06);
+                        gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.06 + 0.1);
+                        osc.connect(gain);
+                        gain.connect(this.ctx.destination);
+                        osc.start(now + idx * 0.06);
+                        osc.stop(now + idx * 0.06 + 0.1);
+                    });
+                } catch(e) {}
+            }
+
+            playGameOver() {
+                if (this.sfxMuted) return;
+                this.init();
+                if (!this.ctx) return;
+                try {
+                    const now = this.ctx.currentTime;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(300, now);
+                    osc.frequency.linearRampToValueAtTime(60, now + 0.7);
+                    gain.gain.setValueAtTime(0.35, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.7);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.7);
+                } catch(e) {}
+            }
+        }
+
+        const soundEngine = new CyberSoundEngine();
 
         const App = () => {
             const [gameState, setGameState] = useState({
                 score: 0,
-                timeLeft: 20,
+                timeLeft: 40,
                 isPlaying: false,
                 isPaused: false,
                 currentTraffic: null
@@ -72,6 +431,47 @@
             const [feedback, setFeedback] = useState(null); // 'correct' or 'incorrect'
             const [particles, setParticles] = useState([]);
             const [showGameOver, setShowGameOver] = useState(false);
+            const [sfxMuted, setSfxMuted] = useState(false);
+            const [bgmMuted, setBgmMuted] = useState(false);
+
+            // Touch gesture tracking
+            const touchStartPos = useRef({ x: 0, y: 0 });
+
+            // Trigger haptic vibration on mobile
+            const vibrate = (pattern) => {
+                if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                    try {
+                        navigator.vibrate(pattern);
+                    } catch(e) {}
+                }
+            };
+
+            const toggleBGM = () => {
+                const muted = soundEngine.toggleBGM();
+                setBgmMuted(muted);
+            };
+
+            const toggleSFX = () => {
+                const muted = soundEngine.toggleSFX();
+                setSfxMuted(muted);
+            };
+
+            // Global Autoplay Trigger on first user interaction
+            useEffect(() => {
+                const handleUserInteraction = () => {
+                    soundEngine.startBGM();
+                };
+
+                window.addEventListener('pointerdown', handleUserInteraction, { once: true });
+                window.addEventListener('keydown', handleUserInteraction, { once: true });
+                window.addEventListener('touchstart', handleUserInteraction, { once: true });
+
+                return () => {
+                    window.removeEventListener('pointerdown', handleUserInteraction);
+                    window.removeEventListener('keydown', handleUserInteraction);
+                    window.removeEventListener('touchstart', handleUserInteraction);
+                };
+            }, []);
 
             useEffect(() => {
                 let socket = null;
@@ -81,8 +481,7 @@
                     try {
                         const res = await fetch('./ws');
                         if (res.status === 500) {
-                            const body = await res.text();
-                            console.error("500 WebSocket Error from DO:", body);
+                            console.error("500 WebSocket Error from DO");
                             reconnectTimer = setTimeout(connect, 3000);
                             return;
                         }
@@ -105,13 +504,20 @@
                             setGameState(msg.data);
                             if (!msg.data.isPlaying && msg.data.timeLeft === 0) {
                                 setShowGameOver(true);
+                                soundEngine.setIntensity('GAMEOVER');
+                                soundEngine.playGameOver();
+                                vibrate([100, 50, 100, 50, 200]);
                             }
                         } else if (msg.type === 'FEEDBACK') {
                             if (msg.correct) {
                                 setFeedback('correct');
-                                setParticles(prev => [...prev, { id: Date.now(), x: Math.random() * 80 + 10, y: 50 }]);
+                                soundEngine.playCorrect();
+                                vibrate(20);
+                                setParticles(prev => [...prev, { id: Date.now(), x: Math.random() * 60 + 20, y: 40 }]);
                             } else {
                                 setFeedback('incorrect');
+                                soundEngine.playIncorrect();
+                                vibrate([60, 40, 60]);
                             }
                             setTimeout(() => setFeedback(null), 300);
                         }
@@ -139,6 +545,10 @@
 
             const startGame = () => {
                 if (ws && isConnected) {
+                    soundEngine.startBGM();
+                    soundEngine.setIntensity('PLAYING');
+                    soundEngine.playStart();
+                    vibrate(40);
                     ws.send(JSON.stringify({ type: 'START' }));
                     setShowGameOver(false);
                 }
@@ -146,18 +556,24 @@
 
             const pauseGame = () => {
                 if (ws && isConnected) {
+                    soundEngine.setIntensity('PAUSED');
+                    vibrate(30);
                     ws.send(JSON.stringify({ type: 'PAUSE' }));
                 }
             };
             
             const resumeGame = () => {
                 if (ws && isConnected) {
+                    soundEngine.setIntensity('PLAYING');
+                    vibrate(30);
                     ws.send(JSON.stringify({ type: 'RESUME' }));
                 }
             };
             
             const resetGame = () => {
                 if (ws && isConnected) {
+                    soundEngine.setIntensity('STANDBY');
+                    vibrate(30);
                     ws.send(JSON.stringify({ type: 'RESET' }));
                     setShowGameOver(false);
                 }
@@ -169,192 +585,331 @@
                 }
             };
 
+            // Keyboard shortcut support (1 = Normal, 2 = Port Scan, 3 = DDoS, Space = Start/Pause)
+            useEffect(() => {
+                const handleKeyDown = (e) => {
+                    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+                    soundEngine.startBGM();
+                    if (e.key === '1') {
+                        guess('Normal');
+                    } else if (e.key === '2') {
+                        guess('Port Scan');
+                    } else if (e.key === '3') {
+                        guess('DDoS');
+                    } else if (e.key === ' ' || e.code === 'Space') {
+                        e.preventDefault();
+                        if (!gameState.isPlaying && !gameState.isPaused) startGame();
+                        else if (gameState.isPlaying) pauseGame();
+                        else if (gameState.isPaused) resumeGame();
+                    }
+                };
+
+                window.addEventListener('keydown', handleKeyDown);
+                return () => window.removeEventListener('keydown', handleKeyDown);
+            }, [gameState.isPlaying, gameState.isPaused, ws, isConnected]);
+
+            // Touch Swipe Gesture Handler
+            const handleTouchStart = (e) => {
+                soundEngine.startBGM();
+                if (!e.touches || e.touches.length === 0) return;
+                touchStartPos.current = {
+                    x: e.touches[0].clientX,
+                    y: e.touches[0].clientY
+                };
+            };
+
+            const handleTouchEnd = (e) => {
+                if (!gameState.isPlaying || !e.changedTouches || e.changedTouches.length === 0) return;
+                const deltaX = e.changedTouches[0].clientX - touchStartPos.current.x;
+                const deltaY = e.changedTouches[0].clientY - touchStartPos.current.y;
+
+                const minSwipe = 40;
+
+                if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                    if (deltaX < -minSwipe) {
+                        guess('Normal');
+                    } else if (deltaX > minSwipe) {
+                        guess('DDoS');
+                    }
+                } else {
+                    if (deltaY < -minSwipe) {
+                        guess('Port Scan');
+                    }
+                }
+            };
+
             return (
-                <div className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden">
+                <div className="min-h-screen flex flex-col justify-between items-center p-3 sm:p-6 relative overflow-x-hidden pt-safe pb-safe">
                     {/* Background Grid Decoration */}
-                    <div className="absolute inset-0 opacity-10 pointer-events-none" 
-                         style={{ backgroundImage: 'linear-gradient(rgba(0, 243, 255, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 243, 255, 0.1) 1px, transparent 1px)', backgroundSize: '40px 40px' }}>
+                    <div className="fixed inset-0 opacity-10 pointer-events-none z-0" 
+                         style={{ backgroundImage: 'linear-gradient(rgba(0, 243, 255, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 243, 255, 0.1) 1px, transparent 1px)', backgroundSize: '30px 30px' }}>
                     </div>
 
-                    {/* Header */}
-                    <div className="w-full max-w-4xl flex justify-between items-end mb-8 z-10">
-                        <div className="flex flex-col">
-                            <h1 className="text-4xl font-bold neon-glow tracking-tighter flex items-center gap-2">
-                                <Shield className="w-8 h-8" />
-                                TRAFFIC_ANALYZER v1.0
-                            </h1>
-                            <div className="text-xs opacity-50">PACKET_SNIFFER_SUBSYSTEM_ACTIVE</div>
+                    {/* Sound & Mobile Status Bar */}
+                    <div className="w-full max-w-4xl flex justify-between items-center z-20 mb-3 sm:mb-4">
+                        <div className="flex items-center gap-2 text-[10px] sm:text-xs text-cyan-400/70">
+                            <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400 animate-pulse' : 'bg-red-500'}`}></span>
+                            <span>{isConnected ? 'LIVE_LINK' : 'OFFLINE'}</span>
                         </div>
-                        <div className="flex gap-12">
-                            <div className="text-right">
-                                <div className="text-xs opacity-50 uppercase">Global Score</div>
-                                <div className="text-4xl font-bold neon-glow">{gameState.score.toString().padStart(6, '0')}</div>
-                            </div>
-                            <div className="text-right">
-                                <div className="text-xs opacity-50 uppercase">Time Remaining</div>
-                                <div className="text-4xl font-bold text-red-500" style={{ textShadow: '0 0 10px rgba(239, 68, 68, 0.5)' }}>
-                                    {gameState.timeLeft}s
-                                </div>
-                            </div>
-                        </div>
-                    </div>
 
-                    {/* Analysis Window */}
-                    <div className="w-full max-w-4xl h-80 neon-border bg-black/80 relative flex flex-col z-10">
-                        <div className="bg-cyan-900/30 border-b border-cyan-500/30 p-2 flex justify-between items-center">
-                            <span className="text-xs font-bold flex items-center gap-2">
-                                <Activity className="w-3 h-3" /> LIVE_TRAFFIC_FEED
-                            </span>
-                            <span className="text-[10px] opacity-50">0x442_001_8F</span>
-                        </div>
-                        
-                        <div className="flex-1 p-6 flex flex-col justify-center items-center relative">
-                            {gameState.currentTraffic ? (
-                                <motion.div 
-                                    key={gameState.currentTraffic.instanceId}
-                                    initial={{ opacity: 0, scale: 0.95 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    className={`w-full flex flex-col gap-4 transition-opacity ${gameState.isPaused ? 'opacity-30 blur-sm' : 'opacity-100'}`}
-                                >
-                                    <div className="bg-black border border-cyan-500/30 p-4 font-mono text-green-400 text-sm overflow-hidden whitespace-normal break-all">
-                                        <div className="text-[10px] text-gray-500 mb-1 tracking-widest">TCPDUMP_OUTPUT</div>
-                                        {gameState.currentTraffic.rawString}
+                        {/* Mute Buttons for BGM & SFX */}
+                        <div className="flex items-center gap-2">
+                            {/* BGM Toggle Button */}
+                            <button 
+                                onClick={toggleBGM} 
+                                className={`px-2.5 py-1.5 border rounded bg-black/70 text-xs font-mono flex items-center gap-1.5 transition-all active:scale-95 ${
+                                    bgmMuted 
+                                        ? 'border-red-500/50 text-red-400 hover:border-red-400' 
+                                        : 'border-cyan-500/50 text-cyan-400 hover:border-cyan-400 shadow-[0_0_10px_rgba(0,243,255,0.2)]'
+                                }`}
+                                title="Toggle Intense Cyberpunk Background Music"
+                            >
+                                <Music className={`w-3.5 h-3.5 ${!bgmMuted && gameState.isPlaying ? 'text-cyan-300 animate-bounce' : ''}`} />
+                                <span className="hidden sm:inline">{bgmMuted ? 'BGM_MUTED' : 'BGM_INTENSE'}</span>
+                                {!bgmMuted && (
+                                    <div className="flex items-end gap-0.5 h-3">
+                                        <div className="w-0.5 bg-cyan-400 eq-bar-1"></div>
+                                        <div className="w-0.5 bg-cyan-400 eq-bar-2"></div>
+                                        <div className="w-0.5 bg-cyan-400 eq-bar-3"></div>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-x-12 gap-y-4">
-                                        <div className="space-y-1">
-                                            <div className="text-[10px] opacity-50 uppercase">Extracted Behavior</div>
-                                            <div className="text-xl font-bold text-cyan-400 italic">"{gameState.currentTraffic.behavior}"</div>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <div className="text-[10px] opacity-50 uppercase">Extracted Flags</div>
-                                            <div className="text-xl font-bold text-yellow-400">[{gameState.currentTraffic.flag}]</div>
-                                        </div>
-                                    </div>
-                                    {gameState.isPaused && (
-                                        <div className="absolute inset-0 flex items-center justify-center z-30">
-                                            <div className="text-4xl font-bold neon-glow tracking-widest bg-black/80 px-8 py-4 border border-cyan-500">PAUSED</div>
-                                        </div>
-                                    )}
-
-                                </motion.div>
-                            ) : (
-                                <div className="text-cyan-900 animate-pulse text-2xl font-bold">
-                                    {gameState.isPlaying ? "INITIALIZING_CAPTURE..." : "STANDBY"}
-                                </div>
-                            )}
-
-                            {/* Correct/Incorrect Flash */}
-                            <AnimatePresence>
-                                {feedback === 'incorrect' && (
-                                    <motion.div 
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        exit={{ opacity: 0 }}
-                                        className="absolute inset-0 bg-red-500/20 flex items-center justify-center z-20 pointer-events-none"
-                                    >
-                                        <X className="w-48 h-48 text-red-500" strokeWidth={3} />
-                                    </motion.div>
                                 )}
-                            </AnimatePresence>
+                            </button>
+
+                            {/* SFX Toggle Button */}
+                            <button 
+                                onClick={toggleSFX} 
+                                className={`p-1.5 border rounded bg-black/70 text-xs font-mono transition-all active:scale-95 ${
+                                    sfxMuted ? 'border-red-500/50 text-red-400' : 'border-cyan-500/50 text-cyan-400'
+                                }`}
+                                title="Toggle Sound FX"
+                            >
+                                {sfxMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Main Container */}
+                    <div className="w-full max-w-4xl flex flex-col items-center z-10 my-auto">
+                        
+                        {/* Header */}
+                        <div className="w-full flex flex-col sm:flex-row justify-between items-center sm:items-end gap-3 sm:gap-0 mb-4 sm:mb-8">
+                            <div className="flex flex-col items-center sm:items-start text-center sm:text-left">
+                                <h1 className="text-2xl sm:text-3xl md:text-4xl font-black neon-glow tracking-tighter flex items-center gap-2">
+                                    <Shield className="w-6 h-6 sm:w-8 sm:h-8 text-cyan-400 shrink-0" />
+                                    <span>TRAFFIC_ANALYZER <span className="text-xs sm:text-sm text-cyan-400 font-normal">v1.0</span></span>
+                                </h1>
+                                <div className="text-[10px] sm:text-xs opacity-60 tracking-wider">PACKET_SNIFFER_SUBSYSTEM_ACTIVE</div>
+                            </div>
                             
-                            {/* Particles */}
-                            {particles.map(p => (
-                                <div key={p.id} className="particle text-2xl font-bold text-cyan-400" 
-                                     style={{ left: `${p.x}%`, top: `${p.y}%` }}>
-                                    +100
+                            <div className="flex gap-4 sm:gap-12 w-full sm:w-auto justify-between sm:justify-end bg-black/60 sm:bg-transparent p-2.5 sm:p-0 rounded-lg border border-cyan-500/20 sm:border-0">
+                                <div className="text-center sm:text-right flex-1 sm:flex-initial">
+                                    <div className="text-[9px] sm:text-xs opacity-60 uppercase tracking-wider">Global Score</div>
+                                    <div className="text-2xl sm:text-4xl font-bold neon-glow font-mono">
+                                        {gameState.score.toString().padStart(6, '0')}
+                                    </div>
                                 </div>
+                                <div className="text-center sm:text-right flex-1 sm:flex-initial">
+                                    <div className="text-[9px] sm:text-xs opacity-60 uppercase tracking-wider">Time Left</div>
+                                    <div className="text-2xl sm:text-4xl font-bold text-red-500 font-mono" style={{ textShadow: '0 0 10px rgba(239, 68, 68, 0.6)' }}>
+                                        {gameState.timeLeft}s
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Analysis Window / Card (Supports Touch Swipe) */}
+                        <div 
+                            onTouchStart={handleTouchStart}
+                            onTouchEnd={handleTouchEnd}
+                            className="w-full min-h-[240px] sm:min-h-[300px] sm:h-80 neon-border bg-black/85 relative flex flex-col rounded-lg sm:rounded-none overflow-hidden select-none"
+                        >
+                            <div className="bg-cyan-950/40 border-b border-cyan-500/30 px-3 py-2 flex justify-between items-center">
+                                <span className="text-[11px] sm:text-xs font-bold flex items-center gap-2 text-cyan-300">
+                                    <Activity className="w-3.5 h-3.5 animate-pulse text-cyan-400" /> LIVE_TRAFFIC_FEED
+                                </span>
+                                <span className="text-[10px] font-mono opacity-50">0x442_001_8F</span>
+                            </div>
+                            
+                            <div className="flex-1 p-3 sm:p-6 flex flex-col justify-center items-center relative min-h-0">
+                                {gameState.currentTraffic ? (
+                                    <motion.div 
+                                        key={gameState.currentTraffic.instanceId}
+                                        initial={{ opacity: 0, scale: 0.96 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        transition={{ duration: 0.15 }}
+                                        className={`w-full flex flex-col gap-3 sm:gap-4 transition-opacity ${gameState.isPaused ? 'opacity-30 blur-sm' : 'opacity-100'}`}
+                                    >
+                                        <div className="bg-black/90 border border-cyan-500/40 p-2.5 sm:p-4 font-mono text-green-400 text-xs sm:text-sm rounded sm:rounded-none overflow-x-auto break-all max-h-32 sm:max-h-none">
+                                            <div className="text-[9px] sm:text-[10px] text-gray-400 mb-1 tracking-widest uppercase font-sans">TCPDUMP_OUTPUT</div>
+                                            {gameState.currentTraffic.rawString}
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-x-12 sm:gap-y-4">
+                                            <div className="space-y-0.5 sm:space-y-1">
+                                                <div className="text-[9px] sm:text-[10px] opacity-60 uppercase tracking-wider">Extracted Behavior</div>
+                                                <div className="text-sm sm:text-xl font-bold text-cyan-400 italic break-words line-clamp-2">
+                                                    "{gameState.currentTraffic.behavior}"
+                                                </div>
+                                            </div>
+                                            <div className="space-y-0.5 sm:space-y-1">
+                                                <div className="text-[9px] sm:text-[10px] opacity-60 uppercase tracking-wider">Extracted Flags</div>
+                                                <div className="text-sm sm:text-xl font-bold text-yellow-400 font-mono">
+                                                    [{gameState.currentTraffic.flag}]
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {gameState.isPaused && (
+                                            <div className="absolute inset-0 flex items-center justify-center z-30">
+                                                <div className="text-2xl sm:text-4xl font-bold neon-glow tracking-widest bg-black/90 px-6 py-3 sm:px-8 sm:py-4 border border-cyan-500 rounded">
+                                                    PAUSED
+                                                </div>
+                                            </div>
+                                        )}
+                                    </motion.div>
+                                ) : (
+                                    <div className="text-cyan-800 animate-pulse text-lg sm:text-2xl font-bold tracking-widest text-center px-4">
+                                        {gameState.isPlaying ? "INITIALIZING_CAPTURE..." : "PRESS START TO BEGIN"}
+                                    </div>
+                                )}
+
+                                {/* Correct / Incorrect Feedback Overlay */}
+                                <AnimatePresence>
+                                    {feedback === 'incorrect' && (
+                                        <motion.div 
+                                            initial={{ opacity: 0, scale: 0.8 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            exit={{ opacity: 0 }}
+                                            className="absolute inset-0 bg-red-600/30 flex items-center justify-center z-20 pointer-events-none rounded-lg sm:rounded-none"
+                                        >
+                                            <X className="w-32 h-32 sm:w-48 sm:h-48 text-red-500 drop-shadow-[0_0_15px_rgba(239,68,68,0.8)]" strokeWidth={3} />
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                                
+                                {/* Score Floating Particles */}
+                                {particles.map(p => (
+                                    <div key={p.id} className="particle text-xl sm:text-2xl font-black text-cyan-300 drop-shadow-[0_0_10px_#00f3ff]" 
+                                         style={{ left: `${p.x}%`, top: `${p.y}%` }}>
+                                        +100
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Mobile Swipe Gesture Helper */}
+                        {gameState.isPlaying && (
+                            <div className="sm:hidden w-full flex items-center justify-between text-[10px] text-cyan-400/60 mt-2 px-1 gesture-hint font-mono">
+                                <span className="flex items-center gap-0.5"><ArrowLeft className="w-3 h-3" /> Swipe Left: Normal</span>
+                                <span className="flex items-center gap-0.5"><ArrowUp className="w-3 h-3" /> Swipe Up: Port Scan</span>
+                                <span className="flex items-center gap-0.5">Swipe Right: DDoS <ArrowRight className="w-3 h-3" /></span>
+                            </div>
+                        )}
+
+                        {/* Classification Action Buttons */}
+                        <div className="w-full grid grid-cols-3 gap-2 sm:gap-6 mt-4 sm:mt-8">
+                            {[
+                                { label: "Normal", type: "Normal", color: "cyan", icon: Shield, key: "1" },
+                                { label: "Port Scan", type: "Port Scan", color: "yellow", icon: RefreshCw, key: "2" },
+                                { label: "DDoS", type: "DDoS", color: "red", icon: AlertTriangle, key: "3" }
+                            ].map((btn) => (
+                                <button
+                                    key={btn.type}
+                                    onClick={() => guess(btn.type)}
+                                    disabled={!gameState.isPlaying}
+                                    className={`
+                                        group relative overflow-hidden p-3 sm:p-6 rounded-lg sm:rounded-none border-2 transition-all active:scale-95 touch-manipulation flex flex-col items-center justify-center min-h-[85px] sm:min-h-[110px]
+                                        ${!gameState.isPlaying ? 'opacity-30 border-gray-800 cursor-not-allowed' : 
+                                          btn.color === 'cyan' ? 'border-cyan-500 hover:bg-cyan-500/20 active:bg-cyan-500/40' :
+                                          btn.color === 'yellow' ? 'border-yellow-500 hover:bg-yellow-500/20 active:bg-yellow-500/40' :
+                                          'border-red-500 hover:bg-red-500/20 active:bg-red-500/40'}
+                                    `}
+                                >
+                                    <div className="flex flex-col items-center gap-1 sm:gap-2">
+                                        <btn.icon className={`w-6 h-6 sm:w-8 sm:h-8 ${
+                                            btn.color === 'cyan' ? 'text-cyan-400' :
+                                            btn.color === 'yellow' ? 'text-yellow-400' :
+                                            'text-red-400'
+                                        }`} />
+                                        <span className="text-xs sm:text-base md:text-xl font-bold uppercase tracking-wider text-center leading-tight">
+                                            <span className="hidden sm:inline opacity-60 font-normal">[{btn.key}] </span>
+                                            {btn.label}
+                                        </span>
+                                    </div>
+                                    <div className="absolute top-1 right-1 text-[8px] opacity-40 font-mono hidden sm:block">
+                                        [{btn.key}]
+                                    </div>
+                                </button>
                             ))}
                         </div>
-                    </div>
 
-                    {/* Action Buttons */}
-                    <div className="w-full max-w-4xl grid grid-cols-3 gap-6 mt-8 z-10">
-                        {[
-                            { label: "Normal", type: "Normal", color: "cyan", icon: Shield },
-                            { label: "Port Scan", type: "Port Scan", color: "yellow", icon: RefreshCw },
-                            { label: "DDoS", type: "DDoS", color: "red", icon: AlertTriangle }
-                        ].map((btn, idx) => (
-                            <button
-                                key={btn.type}
-                                onClick={() => guess(btn.type)}
-                                disabled={!gameState.isPlaying}
-                                className={`
-                                    group relative overflow-hidden p-6 rounded-none border-2 transition-all
-                                    ${!gameState.isPlaying ? 'opacity-20 border-gray-800' : 
-                                      btn.color === 'cyan' ? 'border-cyan-500 hover:bg-cyan-500/20' :
-                                      btn.color === 'yellow' ? 'border-yellow-500 hover:bg-yellow-500/20' :
-                                      'border-red-500 hover:bg-red-500/20'}
-                                `}
-                            >
-                                <div className="flex flex-col items-center gap-2">
-                                    <btn.icon className={`w-8 h-8 ${
-                                        btn.color === 'cyan' ? 'text-cyan-400' :
-                                        btn.color === 'yellow' ? 'text-yellow-400' :
-                                        'text-red-400'
-                                    }`} />
-                                    <span className="text-xl font-bold uppercase tracking-widest">[{idx + 1}] {btn.label}</span>
-                                </div>
-                                <div className="absolute top-0 right-0 p-1 text-[8px] opacity-30">CMD_{btn.type.replace(' ', '_').toUpperCase()}</div>
-                            </button>
-                        ))}
-                    </div>
+                        {/* Controls (Start, Pause, Resume, Reset) */}
+                        <div className="w-full mt-6 sm:mt-10 flex flex-col sm:flex-row justify-center items-center gap-3 sm:gap-4">
+                            {(!gameState.isPlaying && !gameState.isPaused) && !showGameOver && (
+                                <button 
+                                    onClick={startGame}
+                                    disabled={!isConnected}
+                                    className={`w-full sm:w-auto group flex items-center justify-center gap-3 px-8 sm:px-12 py-3.5 sm:py-4 font-bold text-lg sm:text-2xl transition-all rounded-lg sm:rounded-none active:scale-95 ${
+                                        isConnected 
+                                            ? 'bg-cyan-500 text-black hover:bg-white shadow-[0_0_20px_rgba(0,243,255,0.4)]' 
+                                            : 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                                    }`}
+                                >
+                                    <Play className="fill-current w-5 h-5 sm:w-6 sm:h-6" /> 
+                                    <span>{isConnected ? "START_SIMULATION" : "CONNECTING..."}</span>
+                                </button>
+                            )}
 
-                    {/* Controls */}
-                    <div className="mt-12 z-10 flex gap-4">
-                        {(!gameState.isPlaying && !gameState.isPaused) && !showGameOver && (
-                            <button 
-                                onClick={startGame}
-                                disabled={!isConnected}
-                                className={`group flex items-center gap-4 px-12 py-4 font-bold text-2xl transition-colors ${isConnected ? 'bg-cyan-500 text-black hover:bg-white' : 'bg-gray-700 text-gray-500 cursor-not-allowed'}`}
-                            >
-                                <Play className="fill-current" /> {isConnected ? "START_SIMULATION" : "CONNECTING..."}
-                            </button>
-                        )}
-                        {gameState.isPlaying && (
-                            <button 
-                                onClick={pauseGame}
-                                className="group flex items-center gap-4 bg-yellow-500 text-black px-12 py-4 font-bold text-2xl hover:bg-white transition-colors"
-                            >
-                                <AlertTriangle className="fill-current" /> PAUSE
-                            </button>
-                        )}
-                        {gameState.isPaused && !showGameOver && (
-                            <button 
-                                onClick={resumeGame}
-                                className="group flex items-center gap-4 bg-cyan-500 text-black px-12 py-4 font-bold text-2xl hover:bg-white transition-colors"
-                            >
-                                <Play className="fill-current" /> RESUME
-                            </button>
-                        )}
-                        {(gameState.isPlaying || gameState.isPaused) && (
-                            <button 
-                                onClick={resetGame}
-                                className="group flex items-center gap-4 bg-red-500 text-black px-12 py-4 font-bold text-2xl hover:bg-white transition-colors"
-                            >
-                                <RefreshCw className="fill-current" /> RESET
-                            </button>
-                        )}
+                            {gameState.isPlaying && (
+                                <button 
+                                    onClick={pauseGame}
+                                    className="w-full sm:w-auto group flex items-center justify-center gap-3 bg-yellow-500 text-black px-8 sm:px-12 py-3.5 sm:py-4 font-bold text-lg sm:text-2xl hover:bg-white transition-all rounded-lg sm:rounded-none active:scale-95 shadow-[0_0_15px_rgba(234,179,8,0.4)]"
+                                >
+                                    <AlertTriangle className="fill-current w-5 h-5 sm:w-6 sm:h-6" /> PAUSE
+                                </button>
+                            )}
+
+                            {gameState.isPaused && !showGameOver && (
+                                <button 
+                                    onClick={resumeGame}
+                                    className="w-full sm:w-auto group flex items-center justify-center gap-3 bg-cyan-500 text-black px-8 sm:px-12 py-3.5 sm:py-4 font-bold text-lg sm:text-2xl hover:bg-white transition-all rounded-lg sm:rounded-none active:scale-95 shadow-[0_0_15px_rgba(0,243,255,0.4)]"
+                                >
+                                    <Play className="fill-current w-5 h-5 sm:w-6 sm:h-6" /> RESUME
+                                </button>
+                            )}
+
+                            {(gameState.isPlaying || gameState.isPaused) && (
+                                <button 
+                                    onClick={resetGame}
+                                    className="w-full sm:w-auto group flex items-center justify-center gap-3 bg-red-500 text-black px-8 sm:px-12 py-3.5 sm:py-4 font-bold text-lg sm:text-2xl hover:bg-white transition-all rounded-lg sm:rounded-none active:scale-95 shadow-[0_0_15px_rgba(239,68,68,0.4)]"
+                                >
+                                    <RefreshCw className="w-5 h-5 sm:w-6 sm:h-6" /> RESET
+                                </button>
+                            )}
+                        </div>
+
                     </div>
 
                     {/* Game Over Modal */}
                     <AnimatePresence>
                         {showGameOver && (
                             <motion.div 
-                                initial={{ opacity: 0, scale: 0.9 }}
+                                initial={{ opacity: 0, scale: 0.95 }}
                                 animate={{ opacity: 1, scale: 1 }}
-                                className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm"
+                                exit={{ opacity: 0, scale: 0.95 }}
+                                className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4"
                             >
-                                <div className="text-center space-y-8 p-12 neon-border bg-black max-w-lg w-full mx-4">
-                                    <h2 className="text-4xl sm:text-5xl md:text-6xl font-black text-red-500 italic break-words w-full">SYSTEM_CRASHED</h2>
-                                    <div className="space-y-2">
-                                        <div className="text-xs opacity-50 uppercase">Analysis Results</div>
-                                        <div className="text-5xl font-bold text-white">SCORE: {gameState.score}</div>
+                                <div className="text-center space-y-6 p-6 sm:p-10 neon-border bg-black max-w-md w-full rounded-xl border border-red-500/50 shadow-[0_0_30px_rgba(239,68,68,0.3)]">
+                                    <h2 className="text-3xl sm:text-5xl font-black text-red-500 italic tracking-tight">SYSTEM_CRASHED</h2>
+                                    <div className="space-y-1 bg-red-950/20 p-4 rounded border border-red-500/20">
+                                        <div className="text-[10px] sm:text-xs opacity-60 uppercase tracking-widest text-red-300">Final Score Analysis</div>
+                                        <div className="text-4xl sm:text-5xl font-extrabold text-white font-mono">{gameState.score}</div>
                                     </div>
                                     <button 
                                         onClick={startGame}
-                                        className="w-full flex items-center justify-center gap-4 bg-cyan-500 text-black py-4 font-bold text-xl hover:bg-white transition-colors"
+                                        className="w-full flex items-center justify-center gap-3 bg-cyan-500 text-black py-3.5 sm:py-4 font-bold text-lg sm:text-xl hover:bg-white transition-all rounded-lg active:scale-95 shadow-[0_0_20px_rgba(0,243,255,0.5)]"
                                     >
-                                        <RefreshCw /> REBOOT_SYSTEM
+                                        <RefreshCw className="w-5 h-5" /> REBOOT_SYSTEM
                                     </button>
                                 </div>
                             </motion.div>
@@ -362,18 +917,17 @@
                     </AnimatePresence>
 
                     {/* Footer / Info */}
-                    <div className="absolute bottom-4 left-0 w-full flex justify-between px-8 items-end text-[10px] opacity-50">
-                        <div>
-                            &gt; NODE_STATUS: OK<br />
-                            &gt; ENCRYPTION: AES-256-GCM<br />
-                            &gt; UPLINK: STABLE
+                    <div className="w-full max-w-4xl flex flex-col sm:flex-row justify-between items-center sm:items-end text-[10px] sm:text-xs opacity-50 gap-2 sm:gap-0 mt-6 sm:mt-8 z-10 text-center sm:text-left">
+                        <div className="font-mono">
+                            &gt; NODE: OK &bull; ENCRYPTION: AES-256 &bull; UPLINK: STABLE
                         </div>
-                        <div className="text-right">
-                            <a href="https://luma.com/devmalaysia-cloudflare?tk=lsekfR" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:text-white hover:opacity-100 transition-all font-bold tracking-widest text-xs">
+                        <div>
+                            <a href="https://luma.com/devmalaysia-cloudflare?tk=lsekfR" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:text-white hover:opacity-100 transition-all font-bold tracking-wider">
                                 Cloudflare Developer Connect x DevOps Malaysia
                             </a>
                         </div>
                     </div>
+
                 </div>
             );
         };
